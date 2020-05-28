@@ -16,6 +16,7 @@
   <include package=".browser" />
 
   <adapter factory=".serializers.PresentationSerializer"/>
+  <adapter factory=".serializers.PersonSerializer"/>
 
   <!-- Publish static files -->
   <browser:resourceDirectory

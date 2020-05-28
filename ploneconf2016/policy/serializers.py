@@ -8,6 +8,7 @@ from zope.interface import Interface
 from zope.interface import implementer
 
 from .content.presentation import IPresentation
+from .content.person import IPerson
 
 
 def getSiteRootRelativePath(context, request):
@@ -28,41 +29,10 @@ def getSiteRootRelativePath(context, request):
 
     return "/" + "/".join(relative_path)
 
-
-# @adapter(ISet, IPresentation, Interface)
-# @implementer(IFieldSerializer)
-# class PresentationSetFieldSerializer(DefaultFieldSerializer):
-#     def __init__(self, field, context, request):
-#         self.context = context
-#         self.request = request
-#         self.field = field
-#
-#     def __call__(self):
-#         result = super(PresentationSetFieldSerializer, self).__call__
-#         if IField.providedBy(self.field):  # Binding is necessary for named vocabularies
-#             self.field = self.field.bind(self.context)
-#
-#         value = self.get_value()
-#         value_type = self.field.value_type
-#         collection_to_serialize = []
-#         import ipdb; ipdb.set_trace() # TODO REMOVE BREAKPOINT
-#         for item in value:
-#             term = value_type.vocabulary.getTerm(item)
-#             item_to_serialize = {
-#                 u"token": term.token,
-#                 u"title": term.title,
-#             }
-#             obj = uuidToObject(item)
-#             if IDexterityContent.providedBy(obj):
-#                 # If obj is a Dexterity Content type, we can provide a site_root_relative_url
-#                 item_to_serialize["site_root_relative_url"] = getSiteRootRelativePath(
-#                     obj, self.request
-#                 )
-#             collection_to_serialize.append(item_to_serialize)
-#
-#         return json_compatible(collection_to_serialize)
-
-
+def twitter_url(person):
+    if person.twitter_handle != None:
+        return 'https://twitter.com/%s' % person.twitter_handle
+    return ''
 
 @adapter(IPresentation, Interface)
 @implementer(ISerializeToJson)
@@ -74,23 +44,32 @@ class PresentationSerializer(SerializeToJson):
     def __call__(self, version=None, include_items=True):
         serialized_presentation = super().__call__(version, include_items)
         avdanced_speaker = []
-        if self.context.speaker:
-            speaker = uuidToObject(next(iter(self.context.speaker)))
-            if speaker.headshot and speaker.headshot.filename:
-                speaker_headshot_filename = speaker.headshot.filename
-            else:
-                speaker_headshot_filename = ""
+        for speaker in self.context.speaker:
+            full_speaker = uuidToObject(speaker)
             avdanced_speaker.append(
                 {
                     "site_root_relative_url": getSiteRootRelativePath(
-                        speaker, self.request
+                        full_speaker, self.request
                     ),
-                    "title": speaker.Title(),
-                    "speaker_url": speaker.absolute_url(),
-                    # "headshot_url": "{}/@@images/{}".format(speaker.absolute_url(), speaker_headshot_filename),
+                    "title": full_speaker.Title(),
+                    "twitter_url": twitter_url(full_speaker),
+                    "twitter_handle": full_speaker.twitter_handle,
+                    "headshot": SerializeToJson(full_speaker, self.request)()['headshot']
                 }
             )
-            serialized_presentation["speaker"] = json_compatible(avdanced_speaker)
+        serialized_presentation["speaker"] = json_compatible(avdanced_speaker)
 
         return serialized_presentation
 
+
+@adapter(IPerson, Interface)
+@implementer(ISerializeToJson)
+class PersonSerializer(SerializeToJson):
+
+    def __init__(self, context, request):
+        super().__init__(context, request)
+
+    def __call__(self, version=None, include_items=True):
+        serialized_person = super().__call__(version, include_items)
+        serialized_person = json_compatible(serialized_person)
+        return serialized_person
