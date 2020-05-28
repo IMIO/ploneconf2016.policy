@@ -15,6 +15,9 @@
   <include package=".content" />
   <include package=".browser" />
 
+  <adapter factory=".serializers.PresentationSerializer"/>
+  <adapter factory=".serializers.PersonSerializer"/>
+
   <!-- Publish static files -->
   <browser:resourceDirectory
       name="ploneconf2016"
